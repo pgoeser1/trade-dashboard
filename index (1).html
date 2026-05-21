@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e29;--border:#252a38;
+  --green:#00e5a0;--green2:#00b87a;--red:#ff4d6d;--amber:#f5a623;
+  --blue:#4d9fff;--text:#e8eaf0;--muted:#6b7280;--r:10px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px}
+body{padding:24px 28px}
+
+/* DROP ZONE */
+#dropZone{border:2px dashed var(--border);border-radius:16px;padding:60px 40px;text-align:center;cursor:pointer;transition:all .3s;margin-bottom:28px}
+#dropZone.drag{border-color:var(--green);background:#00e5a008}
+#dropZone h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:8px}
+#dropZone p{color:var(--muted);font-size:12px;line-height:1.6}
+#dropZone .file-status{display:flex;gap:16px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.fstat{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);font-size:11px}
+.fstat.loaded{border-color:var(--green);color:var(--green)}
+.fstat.waiting{color:var(--muted)}
+#fileInput{display:none}
+#loadBtn{margin-top:16px;padding:10px 28px;background:var(--green);color:#000;border:none;border-radius:8px;font-family:'DM Mono',monospace;font-weight:500;font-size:13px;cursor:pointer;transition:opacity .2s}
+#loadBtn:hover{opacity:.85}
+
+/* DASHBOARD */
+#dashboard{display:none}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+.header-left h1{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.5px;color:#fff}
+.header-left .sub{color:var(--muted);font-size:11px;margin-top:3px}
+.header-right{text-align:right}
+.today-net{font-family:'Syne',sans-serif;font-weight:800;font-size:32px;color:var(--green);line-height:1}
+.today-net-label{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* CONTROLS */
+.controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.acct-pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .2s;white-space:nowrap}
+.pill:hover{border-color:var(--green);color:var(--text)}
+.pill.active{background:var(--green);color:#000;border-color:var(--green);font-weight:500}
+.date-controls{display:flex;gap:8px;align-items:center;margin-left:auto}
+.date-controls label{font-size:10px;color:var(--muted)}
+.date-controls input{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-family:'DM Mono',monospace;font-size:11px}
+.date-controls input:focus{outline:none;border-color:var(--green)}
+.apply-btn{padding:5px 14px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;font-weight:500}
+
+/* GRID LAYOUTS */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.kpi-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.kpi-val{font-family:'Syne',sans-serif;font-weight:700;font-size:26px;color:#fff;line-height:1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5}
+.kpi-green{color:var(--green)}
+.win-bar-wrap{background:var(--bg3);border-radius:4px;height:5px;width:100%;margin-top:8px;overflow:hidden}
+.win-bar{height:100%;background:var(--green);border-radius:4px}
+
+/* DAY BARS */
+.day-bar{display:flex;flex-direction:column;gap:7px}
+.day-row{display:flex;align-items:center;gap:8px}
+.day-label{width:60px;color:var(--muted);font-size:10px;flex-shrink:0}
+.day-track{flex:1;background:var(--bg3);border-radius:3px;height:20px;position:relative;overflow:hidden}
+.day-fill{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:3px;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#000;font-weight:500;white-space:nowrap;min-width:2px}
+.day-net{width:72px;text-align:right;font-size:11px;flex-shrink:0}
+
+/* SYMBOL TABLE */
+.sym-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.sym-row{display:grid;grid-template-columns:56px 80px 48px 48px 1fr;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #1a1e2940}
+.sym-row:last-child{border-bottom:none}
+.sym-row.header-row{padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sym-name{font-weight:500;color:var(--text);font-size:11px}
+.sym-bar-wrap{background:var(--bg3);border-radius:3px;height:8px;overflow:hidden}
+.sym-bar{height:100%;background:var(--green);border-radius:3px}
+
+/* PERIOD TABS */
+.period-tabs{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content}
+.ptab{padding:6px 16px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--bg2);transition:all .15s;font-family:'DM Mono',monospace;border:none}
+.ptab.active{background:var(--green);color:#000;font-weight:500}
+
+/* ACCT BREAKDOWN */
+.acct-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.acct-row:last-child{border-bottom:none}
+.acct-name{font-size:12px;color:var(--text);margin-bottom:3px}
+.acct-stats{display:flex;gap:14px;font-size:10px;color:var(--muted)}
+.acct-net{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--green)}
+
+/* MONTHLY */
+.monthly-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:700px){.monthly-grid{grid-template-columns:repeat(2,1fr)}}
+.month-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px}
+.month-name{font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:6px}
+.month-net{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--green)}
+.month-sub{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* TRADE HISTORY TABLE */
+.table-wrap{overflow-x:auto;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--text)}
+th.sorted{color:var(--green)}
+td{padding:6px 8px;border-bottom:1px solid #1a1e2966;white-space:nowrap}
+tr:hover td{background:#1a1e2940}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.badge-w{background:#00e5a015;color:var(--green);border:1px solid #00e5a030}
+.badge-l{background:#ff4d6d15;color:var(--red);border:1px solid #ff4d6d30}
+.badge-be{background:#f5a62315;color:var(--amber);border:1px solid #f5a62330}
+.tbl-controls{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.tbl-search{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Mono',monospace;font-size:11px;width:200px}
+.tbl-search:focus{outline:none;border-color:var(--green)}
+.pg-btn{padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px}
+.pg-btn:hover{border-color:var(--green);color:var(--text)}
+.pg-info{font-size:10px;color:var(--muted)}
+.spinner{display:none;text-align:center;padding:40px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- DROP ZONE -->
+<div id="dropZone">
+  <h2>📊 Trade Dashboard</h2>
+  <p>Drag & drop your two ThinkorSwim export files below<br>Your data never leaves your browser — everything runs locally.</p>
+  <div class="file-status">
+    <div class="fstat waiting" id="statFilled">⬜ filled_orders.xlsx — not loaded</div>
+    <div class="fstat waiting" id="statCancel">⬜ cancel_orders.xlsx — not loaded</div>
+  </div>
+  <br>
+  <button id="loadBtn" onclick="document.getElementById('fileInput').click()">Choose Files</button>
+  <input type="file" id="fileInput" multiple accept=".xlsx,.csv">
+  <p style="margin-top:12px;font-size:10px;color:var(--muted)">Or drag both files anywhere on this page</p>
+</div>
+<div class="spinner" id="spinner">Processing trades...</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <h1>TRADE DASHBOARD</h1>
+      <div class="sub" id="headerSub"></div>
+    </div>
+    <div class="header-right">
+      <div class="today-net" id="todayNet"></div>
+      <div class="today-net-label">today's net profit</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="acct-pills" id="acctPills"></div>
+    <div class="date-controls">
+      <label>From</label>
+      <input type="date" id="dateFrom">
+      <label>To</label>
+      <input type="date" id="dateTo">
+      <button class="apply-btn" onclick="applyDateFilter()">Apply</button>
+      <button class="apply-btn" style="background:var(--bg3);color:var(--muted);border:1px solid var(--border)" onclick="resetDateFilter()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Today KPIs -->
+  <div class="section-title" id="todayLabel">TODAY</div>
+  <div class="grid4" id="todayKpis"></div>
+
+  <!-- Week + Orders -->
+  <div class="grid2">
+    <div class="card" id="weekBarsCard">
+      <div class="section-title" id="weekBarsTitle">THIS WEEK — DAILY</div>
+      <div class="day-bar" id="weekBars"></div>
+      <div id="weekTotal" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">ORDER ACTIVITY — TODAY</div>
+      <div id="orderActivity"></div>
+    </div>
+  </div>
+
+  <!-- Account breakdown today -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title" id="acctBreakdownTitle">BY ACCOUNT — TODAY</div>
+    <div id="acctBreakdown"></div>
+  </div>
+
+  <!-- Symbol performance -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title">SYMBOL PERFORMANCE — TOP 15 BY NET PROFIT</div>
+    <div class="sym-grid" id="symPerf"></div>
+  </div>
+
+  <!-- Period summary -->
+  <div class="section-title">PERIOD SUMMARY</div>
+  <div class="grid3" id="periodSummary"></div>
+
+  <!-- Monthly -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title">MONTHLY BREAKDOWN</div>
+    <div class="monthly-grid" id="monthlyGrid"></div>
+  </div>
+
+  <!-- Trade history -->
+  <div class="card">
+    <div class="section-title">TRADE HISTORY</div>
+    <div class="tbl-controls">
+      <input class="tbl-search" type="text" id="tblSearch" placeholder="Search symbol, account..." oninput="renderTable()">
+      <span class="pg-info" id="pgInfo"></span>
+      <button class="pg-btn" onclick="changePage(-1)">← Prev</button>
+      <button class="pg-btn" onclick="changePage(1)">Next →</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('Date')">Date</th>
+            <th onclick="sortTable('Account')">Account</th>
+            <th onclick="sortTable('Symbol')">Symbol</th>
+            <th onclick="sortTable('Enter')">Enter</th>
+            <th onclick="sortTable('Exit')">Exit</th>
+            <th onclick="sortTable('Premium')">Premium</th>
+            <th onclick="sortTable('Commission')">Comm</th>
+            <th onclick="sortTable('Net Profit')">Net $</th>
+            <th onclick="sortTable('Trade Time')">Time(s)</th>
+            <th onclick="sortTable('Result')">Result</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+let allTrades = [], allFO = [], allCO = [];
+let filteredTrades = [];
+let activeAcct = 'All';
+let dateFrom = null, dateTo = null;
+let sortCol = 'Date', sortDir = -1;
+let page = 0; const PAGE_SIZE = 50;
+const COMM_RATES = {
+  'Colleen Roth':  [['2026-03-26', 0.70], ['1900-01-01', 1.30]],
+  'Mark Margin':   [['1900-01-01', 1.30]],
+  'Mark Roth':     [['1900-01-01', 1.30]],
+  'Paul IRA':      [['1900-01-01', 0.70]],
+  'Paul Margin':   [['2026-03-26', 0.70], ['1900-01-01', 1.30]],
+  'Paul Roth':     [['2026-03-26', 0.70], ['1900-01-01', 1.30]],
+};
+function getComm(account, dateStr) {
+  const rules = COMM_RATES[account] || [['1900-01-01', 1.30]];
+  for (const [cutoff, rate] of rules) {
+    if (dateStr >= cutoff) return rate;
+  }
+  return 1.30;
+}
+const ACCOUNTS = ['Colleen Roth','Mark Margin','Mark Roth','Paul IRA','Paul Margin','Paul Roth'];
+
+// ── FILE LOADING ───────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+['dragenter','dragover'].forEach(e => document.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('drag'); }));
+['dragleave','drop'].forEach(e => document.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('drag'); }));
+document.addEventListener('drop', ev => handleFiles(ev.dataTransfer.files));
+document.getElementById('fileInput').addEventListener('change', ev => handleFiles(ev.target.files));
+
+let loadedFiles = {};
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    const name = f.name.toLowerCase();
+    if (name.includes('fill')) loadedFiles.filled = f;
+    else if (name.includes('cancel')) loadedFiles.cancel = f;
+    else {
+      // Try to guess by order
+      if (!loadedFiles.filled) loadedFiles.filled = f;
+      else if (!loadedFiles.cancel) loadedFiles.cancel = f;
+    }
+    updateFileStatus();
+  });
+  if (loadedFiles.filled && loadedFiles.cancel) processFiles();
+}
+
+function updateFileStatus() {
+  const sf = document.getElementById('statFilled');
+  const sc = document.getElementById('statCancel');
+  if (loadedFiles.filled) { sf.textContent = '✅ ' + loadedFiles.filled.name; sf.className = 'fstat loaded'; }
+  if (loadedFiles.cancel) { sc.textContent = '✅ ' + loadedFiles.cancel.name; sc.className = 'fstat loaded'; }
+}
+
+function readXlsx(file, colOffset) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      // Find header row (row with 'Account')
+      let headerIdx = raw.findIndex(r => r.some(c => c === 'Account'));
+      if (headerIdx < 0) headerIdx = 1;
+      const headers = raw[headerIdx].slice(colOffset);
+      const rows = [];
+      for (let i = headerIdx + 1; i < raw.length; i++) {
+        const vals = raw[i].slice(colOffset);
+        if (!vals[0]) continue;
+        const obj = {};
+        headers.forEach((h, j) => { obj[h] = vals[j]; });
+        rows.push(obj);
+      }
+      resolve(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function processFiles() {
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('spinner').style.display = 'block';
+
+  // Detect col offset for cancel (sometimes has blank first col)
+  const foRaw = await readXlsx(loadedFiles.filled, 0);
+  let coRaw = await readXlsx(loadedFiles.cancel, 0);
+  if (!coRaw[0] || !coRaw[0]['Account']) coRaw = await readXlsx(loadedFiles.cancel, 1);
+
+  // Normalize dates
+  function toDate(v) {
+    if (!v) return null;
+    if (v instanceof Date) return v;
+    if (typeof v === 'number') return new Date(Math.round((v - 25569) * 86400 * 1000));
+    return new Date(v);
+  }
+
+  const fo = foRaw.map(r => ({ ...r, 'Exec Time': toDate(r['Exec Time']), Exp: toDate(r.Exp), Date: toDate(r['Exec Time']) }));
+  const co = coRaw.map(r => ({ ...r, 'Exec Time': toDate(r['Exec Time']), Date: toDate(r['Exec Time']) }));
+
+  allFO = fo; allCO = co;
+
+  // Match trades
+  const opens  = fo.filter(r => r['Pos Effect'] === 'TO OPEN').sort((a,b) => a['Exec Time']-b['Exec Time']);
+  const closes = fo.filter(r => r['Pos Effect'] === 'TO CLOSE').sort((a,b) => a['Exec Time']-b['Exec Time']);
+  const usedClose = new Set();
+  const trades = [];
+
+  for (const o of opens) {
+    const cands = closes.filter(c =>
+      !usedClose.has(c._idx) &&
+      c.Account === o.Account && c.Symbol === o.Symbol &&
+      String(c.Exp) === String(o.Exp) && c.Strike === o.Strike && c.Type === o.Type &&
+      c['Exec Time'] > o['Exec Time']
+    );
+    if (!cands.length) continue;
+    cands.sort((a,b) => a['Exec Time']-b['Exec Time']);
+    const c = cands[0];
+    c._idx = closes.indexOf(c);
+    usedClose.add(c._idx);
+
+    const sell = Math.abs(o.Price), buy = Math.abs(c.Price), qty = Math.abs(o.Qty);
+    const net = (sell - buy) * qty;
+    const premium = net * 100;
+    const secs = (c['Exec Time'] - o['Exec Time']) / 1000;
+    const comm = getComm(o.Account, o._dateStr);
+    const netProfit = premium - comm;
+    const result = net > 0 ? 'Win' : net < 0 ? 'Loss' : 'Breakeven';
+
+    trades.push({
+      Date: o.Date, DOW: o['Exec Time'].toLocaleDateString('en-US',{weekday:'short'}),
+      Account: o.Account, Symbol: o.Symbol,
+      Enter: sell, Exit: buy, Net: net,
+      'Trade Time': Math.round(secs), Premium: Math.round(premium*100)/100,
+      Commission: Math.round(comm*100)/100, 'Net Profit': Math.round(netProfit*100)/100,
+      Result: result, LongTrade: secs > 120,
+      _dateStr: o.Date ? o.Date.toISOString().slice(0,10) : ''
+    });
+  }
+
+  allTrades = trades.sort((a,b) => b.Date - a.Date);
+
+  // Set default date range
+  if (allTrades.length) {
+    const dates = allTrades.map(t => t._dateStr).filter(Boolean).sort();
+    document.getElementById('dateFrom').value = dates[0];
+    document.getElementById('dateTo').value = dates[dates.length-1];
+  }
+
+  document.getElementById('spinner').style.display = 'none';
+  buildPills();
+  applyFilters();
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// ── PILLS ─────────────────────────────────────────────────────
+function buildPills() {
+  const accts = ['All', ...new Set(allTrades.map(t => t.Account))].filter(a => a === 'All' || allTrades.some(t => t.Account === a));
+  const wrap = document.getElementById('acctPills');
+  wrap.innerHTML = accts.map(a =>
+    `<div class="pill${a===activeAcct?' active':''}" onclick="setAcct('${a}')">${a === 'All' ? 'All Accounts' : a}</div>`
+  ).join('');
+}
+
+function setAcct(a) { activeAcct = a; buildPills(); applyFilters(); }
+
+function applyDateFilter() {
+  dateFrom = document.getElementById('dateFrom').value || null;
+  dateTo   = document.getElementById('dateTo').value   || null;
+  applyFilters();
+}
+
+function resetDateFilter() {
+  if (allTrades.length) {
+    const dates = allTrades.map(t => t._dateStr).filter(Boolean).sort();
+    document.getElementById('dateFrom').value = dates[0];
+    document.getElementById('dateTo').value = dates[dates.length-1];
+  }
+  dateFrom = null; dateTo = null;
+  applyFilters();
+}
+
+function applyFilters() {
+  const from = dateFrom || document.getElementById('dateFrom').value;
+  const to   = dateTo   || document.getElementById('dateTo').value;
+  filteredTrades = allTrades.filter(t => {
+    if (activeAcct !== 'All' && t.Account !== activeAcct) return false;
+    if (from && t._dateStr < from) return false;
+    if (to   && t._dateStr > to)   return false;
+    return true;
+  });
+  renderDashboard();
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function stats(arr) {
+  if (!arr.length) return null;
+  const t=arr.length, w=arr.filter(x=>x.Result==='Win').length, l=arr.filter(x=>x.Result==='Loss').length, be=arr.filter(x=>x.Result==='Breakeven').length;
+  const prem=arr.reduce((s,x)=>s+x.Premium,0), comm=arr.reduce((s,x)=>s+x.Commission,0), net=arr.reduce((s,x)=>s+x['Net Profit'],0);
+  return {t,w,l,be,wr:w/t*100,prem,comm,net,avgNet:net/t,avgTime:arr.reduce((s,x)=>s+x['Trade Time'],0)/t};
+}
+
+function fmt$(v){ return '$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(v){ return v.toFixed(2)+'%'; }
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderDashboard() {
+  const allDates = [...new Set(filteredTrades.map(t=>t._dateStr))].sort();
+  const latestDate = allDates[allDates.length-1] || '';
+  const today = filteredTrades.filter(t=>t._dateStr===latestDate);
+  const weekNum = latestDate ? getWeek(new Date(latestDate)) : 0;
+  const monthStr = latestDate ? latestDate.slice(0,7) : '';
+  const week  = filteredTrades.filter(t=>t._dateStr && getWeek(new Date(t._dateStr))===weekNum && t._dateStr.slice(0,4)===latestDate.slice(0,4));
+  const month = filteredTrades.filter(t=>t._dateStr.startsWith(monthStr));
+
+  const todaySt  = stats(today);
+  const weekSt   = stats(week);
+  const monthSt  = stats(month);
+  const alltimeSt = stats(filteredTrades);
+
+  // Header
+  const df = document.getElementById('dateFrom').value, dt = document.getElementById('dateTo').value;
+  document.getElementById('headerSub').textContent = `Data: ${df} → ${dt}  ·  ${activeAcct === 'All' ? 'All Accounts' : activeAcct}`;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '';
+  document.getElementById('todayLabel').textContent = `TODAY — ${fmtDate(latestDate).toUpperCase()}`;
+  document.getElementById('todayNet').textContent = todaySt ? fmt$(todaySt.net) : '—';
+
+  // Today KPIs
+  document.getElementById('todayKpis').innerHTML = todaySt ? `
+    <div class="card"><div class="kpi-label">Net Profit</div><div class="kpi-val kpi-green">${fmt$(todaySt.net)}</div>
+      <div class="win-bar-wrap"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
+      <div class="kpi-sub">${fmtPct(todaySt.wr)} win rate</div></div>
+    <div class="card"><div class="kpi-label">Trades</div><div class="kpi-val">${todaySt.t.toLocaleString()}</div>
+      <div class="win-bar-wrap"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
+      <div class="kpi-sub">${todaySt.w}W / ${todaySt.l}L / ${todaySt.be}BE</div></div>
+    <div class="card"><div class="kpi-label">Premium Collected</div><div class="kpi-val">${fmt$(todaySt.prem)}</div>
+      <div class="kpi-sub" style="margin-top:8px">Commissions: ${fmt$(todaySt.comm)}</div></div>
+    <div class="card"><div class="kpi-label">Avg Net / Trade</div><div class="kpi-val">${fmt$(todaySt.avgNet)}</div>
+      <div class="kpi-sub" style="margin-top:8px">Avg trade time: ${Math.round(todaySt.avgTime)}s</div></div>
+  ` : '<div class="card" style="grid-column:1/-1;color:var(--muted);text-align:center;padding:20px">No trades for selected date/account</div>';
+
+  // Week daily bars
+  const weekDates = [...new Set(week.map(t=>t._dateStr))].sort();
+  const maxNet = Math.max(...weekDates.map(d=>Math.abs(stats(week.filter(t=>t._dateStr===d))?.net||0)));
+  document.getElementById('weekBarsTitle').textContent = `WEEK ${weekNum} — DAILY`;
+  document.getElementById('weekBars').innerHTML = weekDates.map(d => {
+    const s = stats(week.filter(t=>t._dateStr===d));
+    const pct = maxNet ? Math.round((s.net/maxNet)*100) : 0;
+    const label = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'2-digit',day:'2-digit'});
+    return `<div class="day-row">
+      <div class="day-label">${label}</div>
+      <div class="day-track"><div class="day-fill" style="width:${pct}%">${s.t} trades</div></div>
+      <div class="day-net" style="color:var(--green)">${fmt$(s.net)}</div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:11px">No data</div>';
+
+  if (weekSt) {
+    document.getElementById('weekTotal').innerHTML = `
+      <div style="font-size:10px;color:var(--muted)">Week total · ${weekSt.t.toLocaleString()} trades · ${fmtPct(weekSt.wr)} WR</div>
+      <div style="font-family:Syne,sans-serif;font-weight:700;color:var(--green)">${fmt$(weekSt.net)}</div>`;
+  }
+
+  // Order activity
+  const todayFO = allFO.filter(r => r.Date && r.Date.toISOString().slice(0,10) === latestDate && (activeAcct==='All'||r.Account===activeAcct));
+  const todayCO = allCO.filter(r => r.Date && r.Date.toISOString().slice(0,10) === latestDate && (activeAcct==='All'||r.Account===activeAcct));
+  const totalOrders = todayFO.length + todayCO.length;
+  const fillRate = totalOrders ? todayFO.length/totalOrders*100 : 0;
+  document.getElementById('orderActivity').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div><div class="kpi-label">Filled</div><div style="font-family:Syne,sans-serif;font-weight:700;font-size:24px;color:#fff">${todayFO.length.toLocaleString()}</div></div>
+      <div><div class="kpi-label">Canceled</div><div style="font-family:Syne,sans-serif;font-weight:700;font-size:24px;color:var(--muted)">${todayCO.length.toLocaleString()}</div></div>
+    </div>
+    <div class="kpi-label">Fill Rate</div>
+    <div style="font-family:Syne,sans-serif;font-weight:700;font-size:24px;color:var(--amber)">${fillRate.toFixed(1)}%</div>
+    <div class="win-bar-wrap" style="margin-top:6px"><div class="win-bar" style="width:${fillRate}%;background:var(--amber)"></div></div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px">
+      <span style="color:var(--muted)">Total orders</span><span style="color:var(--text)">${totalOrders.toLocaleString()}</span>
+    </div>`;
+
+  // Account breakdown
+  document.getElementById('acctBreakdownTitle').textContent = `BY ACCOUNT — ${fmtDate(latestDate).toUpperCase()}`;
+  const acctRows = ACCOUNTS.map(a => {
+    const s = stats(today.filter(t=>t.Account===a));
+    if (!s) return '';
+    return `<div class="acct-row">
+      <div><div class="acct-name">${a}</div>
+      <div class="acct-stats"><span>${s.t} trades</span><span>${fmtPct(s.wr)} WR</span><span>${s.w}W / ${s.l}L / ${s.be}BE</span><span>avg ${Math.round(s.avgTime)}s</span></div></div>
+      <div class="acct-net">${fmt$(s.net)}</div></div>`;
+  }).join('');
+  document.getElementById('acctBreakdown').innerHTML = acctRows || '<div style="color:var(--muted);font-size:11px;padding:8px 0">No account data for today</div>';
+
+  // Symbol performance
+  const symMap = {};
+  filteredTrades.forEach(t => {
+    if (!symMap[t.Symbol]) symMap[t.Symbol] = {t:0,w:0,net:0};
+    symMap[t.Symbol].t++; symMap[t.Symbol].net+=t['Net Profit'];
+    if (t.Result==='Win') symMap[t.Symbol].w++;
+  });
+  const syms = Object.entries(symMap).sort((a,b)=>b[1].net-a[1].net).slice(0,15);
+  const maxSymNet = syms[0]?.[1].net || 1;
+  const half = Math.ceil(syms.length/2);
+  const makeSymRows = (arr) => `
+    <div class="sym-row header-row">
+      <div style="font-size:9px;color:var(--muted)">SYMBOL</div>
+      <div style="font-size:9px;color:var(--muted)">NET $</div>
+      <div style="font-size:9px;color:var(--muted);text-align:right">WIN%</div>
+      <div style="font-size:9px;color:var(--muted);text-align:right">TRD</div>
+      <div></div>
+    </div>
+    ${arr.map(([sym,s])=>`<div class="sym-row">
+      <div class="sym-name">${sym}</div>
+      <div style="color:var(--green);font-size:11px">${fmt$(s.net)}</div>
+      <div style="color:var(--muted);font-size:10px;text-align:right">${(s.w/s.t*100).toFixed(1)}%</div>
+      <div style="color:var(--muted);font-size:10px;text-align:right">${s.t}</div>
+      <div class="sym-bar-wrap"><div class="sym-bar" style="width:${Math.round(s.net/maxSymNet*100)}%"></div></div>
+    </div>`).join('')}`;
+  document.getElementById('symPerf').innerHTML = `<div>${makeSymRows(syms.slice(0,half))}</div><div>${makeSymRows(syms.slice(half))}</div>`;
+
+  // Period summary
+  document.getElementById('periodSummary').innerHTML = [
+    {label:`WEEK ${weekNum}`, s:weekSt},
+    {label:monthStr ? new Date(monthStr+'-15').toLocaleString('en-US',{month:'long',year:'numeric'}).toUpperCase() : 'THIS MONTH', s:monthSt},
+    {label:'ALL TIME (FILTERED)', s:alltimeSt}
+  ].map(({label,s})=>s?`<div class="card">
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-val kpi-green">${fmt$(s.net)}</div>
+    <div class="win-bar-wrap"><div class="win-bar" style="width:${Math.min(s.wr,100)}%"></div></div>
+    <div class="kpi-sub">${s.t.toLocaleString()} trades · ${fmtPct(s.wr)} WR · ${s.w}W / ${s.l}L / ${s.be}BE</div>
+  </div>`:'').join('');
+
+  // Monthly
+  const monthGroups = {};
+  filteredTrades.forEach(t => {
+    const m = t._dateStr.slice(0,7);
+    if (!monthGroups[m]) monthGroups[m]=[];
+    monthGroups[m].push(t);
+  });
+  document.getElementById('monthlyGrid').innerHTML = Object.keys(monthGroups).sort().map(m=>{
+    const s = stats(monthGroups[m]);
+    const label = new Date(m+'-15').toLocaleString('en-US',{month:'short',year:'numeric'}).toUpperCase();
+    return `<div class="month-card">
+      <div class="month-name">${label}</div>
+      <div class="month-net">${fmt$(s.net)}</div>
+      <div class="month-sub">${s.t.toLocaleString()} trades · ${fmtPct(s.wr)} WR</div>
+    </div>`;
+  }).join('');
+
+  page = 0;
+  renderTable();
+}
+
+// ── TABLE ─────────────────────────────────────────────────────
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sorted'));
+  document.querySelectorAll('th').forEach(th => { if (th.textContent.trim().replace('$','').toLowerCase().includes(col.toLowerCase().replace('net profit','net').replace('trade time','time(s)'))) th.classList.add('sorted'); });
+  page = 0;
+  renderTable();
+}
+
+function changePage(dir) { page = Math.max(0, page + dir); renderTable(); }
+
+function renderTable() {
+  const q = document.getElementById('tblSearch').value.toLowerCase();
+  let rows = filteredTrades.filter(t =>
+    !q || t.Symbol?.toLowerCase().includes(q) || t.Account?.toLowerCase().includes(q) || t.Result?.toLowerCase().includes(q)
+  );
+  rows = rows.slice().sort((a,b) => {
+    const av = a[sortCol], bv = b[sortCol];
+    if (av instanceof Date && bv instanceof Date) return sortDir*(av-bv);
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir*(av-bv);
+    return sortDir*String(av).localeCompare(String(bv));
+  });
+  const total = rows.length;
+  const start = page * PAGE_SIZE;
+  rows = rows.slice(start, start + PAGE_SIZE);
+  document.getElementById('pgInfo').textContent = `${start+1}–${Math.min(start+PAGE_SIZE,total)} of ${total.toLocaleString()} trades`;
+  document.getElementById('tblBody').innerHTML = rows.map(t => {
+    const badge = t.Result==='Win'?'badge-w':t.Result==='Loss'?'badge-l':'badge-be';
+    const dateStr = t.Date ? t.Date.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'2-digit'}) : '';
+    return `<tr>
+      <td>${dateStr} ${t.DOW||''}</td>
+      <td>${t.Account||''}</td>
+      <td style="font-weight:500">${t.Symbol||''}</td>
+      <td>${t.Enter?.toFixed(2)||''}</td>
+      <td>${t.Exit?.toFixed(2)||''}</td>
+      <td>${fmt$(t.Premium)}</td>
+      <td style="color:var(--muted)">${fmt$(t.Commission)}</td>
+      <td style="color:${t['Net Profit']>=0?'var(--green)':'var(--red)'};font-weight:500">${fmt$(t['Net Profit'])}</td>
+      <td>${t['Trade Time']}s${t.LongTrade?' ⚠️':''}</td>
+      <td><span class="badge ${badge}">${t.Result}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function getWeek(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+</script>
+</body>
+</html>
