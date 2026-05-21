@@ -1,3 +1,8 @@
+bash
+
+cat /home/claude/index.html
+Output
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,6 +130,9 @@ tr:hover td{background:#1a1e2940}
 </style>
 </head>
 <body>
+
+<!-- DEBUG PANEL -->
+<div id="debugPanel" style="background:#1a1e29;border:1px solid #ff4d6d;border-radius:8px;margin-bottom:16px;min-height:40px"></div>
 
 <!-- DROP ZONE -->
 <div id="dropZone">
@@ -332,7 +340,7 @@ function expKey(exp) {
   return String(exp).slice(0,10);
 }
 
-function processFiles() {
+async function processFiles() {
   document.getElementById('dropZone').style.display = 'none';
   document.getElementById('spinner').style.display = 'block';
 
@@ -432,6 +440,53 @@ function processFiles() {
       console.log('  Candidate closes (ignoring exp):', candCloses.length);
       candCloses.slice(0,3).forEach(c => console.log('    Close:', c.Exp, 'ExpType:', typeof c.Exp, 'vs Open Exp:', o.Exp));
     });
+  }
+
+  // Show debug info visually on screen
+  const unmatchedOpens2 = [];
+  for (let oi = 0; oi < opens.length; oi++) {
+    const o = opens[oi];
+    // Check if this open produced a trade
+    const found = trades.some(t =>
+      t.Account === o.Account && t.Symbol === o.Symbol &&
+      Math.abs(t.Enter - Math.abs(o.Price)) < 0.001
+    );
+    if (!found) {
+      // Find closes ignoring exp
+      const candCloses = closes.filter(c =>
+        c.Account === o.Account && c.Symbol === o.Symbol &&
+        String(c.Strike) === String(o.Strike) && c.Type === o.Type &&
+        c['Exec Time'] > o['Exec Time']
+      );
+      unmatchedOpens2.push({
+        acct: o.Account, sym: o.Symbol, strike: o.Strike,
+        openExp: o.Exp, openExpType: typeof o.Exp,
+        price: o.Price, time: o['Exec Time'] ? o['Exec Time'].toISOString() : 'null',
+        candidateCloses: candCloses.length,
+        firstCloseExp: candCloses[0] ? candCloses[0].Exp : 'none',
+        firstCloseExpType: candCloses[0] ? typeof candCloses[0].Exp : 'none',
+        expMatch: candCloses[0] ? (candCloses[0].Exp === o.Exp) : false
+      });
+    }
+  }
+
+  // Display debug on screen
+  const debugDiv = document.getElementById('debugPanel');
+  if (debugDiv) {
+    if (unmatchedOpens2.length === 0) {
+      debugDiv.innerHTML = '<div style="color:#00e5a0;padding:10px">✅ All trades matched! Count: ' + trades.length + '</div>';
+    } else {
+      let html = '<div style="color:#ff4d6d;padding:10px;font-family:monospace;font-size:11px">';
+      html += '<b>⚠️ UNMATCHED OPENS: ' + unmatchedOpens2.length + ' | Total trades: ' + trades.length + '</b><br><br>';
+      unmatchedOpens2.slice(0,5).forEach(u => {
+        html += `Acct:${u.acct} Sym:${u.sym} Strike:${u.strike}<br>`;
+        html += `&nbsp;&nbsp;OpenExp: "${u.openExp}" (${u.openExpType})<br>`;
+        html += `&nbsp;&nbsp;CloseExp: "${u.firstCloseExp}" (${u.firstCloseExpType})<br>`;
+        html += `&nbsp;&nbsp;ExpMatch: ${u.expMatch} | Candidates(no exp): ${u.candidateCloses}<br><br>`;
+      });
+      html += '</div>';
+      debugDiv.innerHTML = html;
+    }
   }
 
   allTrades = trades.sort((a,b) => b.Date - a.Date);
