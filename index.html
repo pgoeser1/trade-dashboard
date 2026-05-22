@@ -333,6 +333,7 @@ function expKey(exp) {
 async function processFiles() {
   document.getElementById('dropZone').style.display = 'none';
   document.getElementById('spinner').style.display = 'block';
+  try {
 
   // Detect col offset for cancel (sometimes has blank first col)
   const foRaw = await readXlsx(loadedFiles.filled, 0);
@@ -500,6 +501,12 @@ async function processFiles() {
   buildPills();
   applyFilters();
   document.getElementById('dashboard').style.display = 'block';
+  } catch(err) {
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('dropZone').style.display = 'block';
+    document.getElementById('debugPanel').innerHTML = '<div style="color:#ff4d6d;padding:10px;font-family:monospace">❌ ERROR: ' + err.message + '</div>';
+    console.error('processFiles error:', err);
+  }
 }
 
 // ── PILLS ─────────────────────────────────────────────────────
