@@ -658,8 +658,7 @@ function renderDashboard() {
       <div style="font-family:Syne,sans-serif;font-weight:700;color:var(--green)">${fmt$(weekSt.net)}</div>`;
   }
 
-  // Order activity now rendered in top KPI row - just clear the old card
-  document.getElementById('orderActivity').innerHTML = '';
+  // Order activity now rendered in top KPI row
 
   // Account breakdown
   document.getElementById('acctBreakdownTitle').textContent = `BY ACCOUNT — ${fmtDate(latestDate).toUpperCase()}`;
