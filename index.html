@@ -70,8 +70,8 @@ body{padding:24px 28px}
 .day-bar{display:flex;flex-direction:column;gap:7px}
 .day-row{display:flex;align-items:center;gap:8px}
 .day-label{width:60px;color:var(--muted);font-size:10px;flex-shrink:0}
-.day-track{flex:1;background:var(--bg3);border-radius:3px;height:20px;position:relative;overflow:hidden}
-.day-fill{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:3px;display:flex;align-items:center;padding-left:8px;font-size:10px;color:#000;font-weight:500;white-space:nowrap;min-width:2px}
+.day-track{flex:1;background:var(--bg3);border-radius:3px;height:16px;position:relative;overflow:hidden}
+.day-fill{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:10px;color:#000;font-weight:500;white-space:nowrap;min-width:2px}
 .day-net{width:72px;text-align:right;font-size:11px;flex-shrink:0}
 
 /* SYMBOL TABLE */
@@ -175,17 +175,11 @@ tr:hover td{background:#1a1e2940}
   <!-- All 6 boxes in one row across the top -->
   <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px" id="todayKpis"></div>
 
-  <!-- Week + Orders moved below -->
-  <div class="grid2">
-    <div class="card" id="weekBarsCard">
-      <div class="section-title" id="weekBarsTitle">THIS WEEK — DAILY</div>
-      <div class="day-bar" id="weekBars"></div>
-      <div id="weekTotal" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"></div>
-    </div>
-    <div class="card">
-      <div class="section-title">ORDER ACTIVITY — TODAY</div>
-      <div id="orderActivity"></div>
-    </div>
+  <!-- Week Daily Bars — full width compact -->
+  <div class="card" style="margin-bottom:12px;padding:10px 16px" id="weekBarsCard">
+    <div class="section-title" style="margin-bottom:8px" id="weekBarsTitle">THIS WEEK — DAILY</div>
+    <div class="day-bar" style="gap:4px" id="weekBars"></div>
+    <div id="weekTotal" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between"></div>
   </div>
 
   <!-- Account breakdown today -->
@@ -565,7 +559,17 @@ function renderDashboard() {
   const today = filteredTrades.filter(t=>t._dateStr===latestDate);
   const weekNum = latestDate ? getWeek(new Date(latestDate)) : 0;
   const monthStr = latestDate ? latestDate.slice(0,7) : '';
-  const week  = filteredTrades.filter(t=>t._dateStr && getWeek(new Date(t._dateStr))===weekNum && t._dateStr.slice(0,4)===latestDate.slice(0,4));
+  // Get Monday of the same week as latestDate to capture all days Mon-Fri
+  const latestDateObj = new Date(latestDate + 'T12:00:00');
+  const dayOfWeek = latestDateObj.getDay(); // 0=Sun, 1=Mon...5=Fri
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekMonday = new Date(latestDateObj);
+  weekMonday.setDate(weekMonday.getDate() - daysFromMonday);
+  const weekMondayStr = weekMonday.toISOString().slice(0,10);
+  const weekFriday = new Date(weekMonday);
+  weekFriday.setDate(weekFriday.getDate() + 4);
+  const weekFridayStr = weekFriday.toISOString().slice(0,10);
+  const week  = filteredTrades.filter(t=>t._dateStr >= weekMondayStr && t._dateStr <= weekFridayStr);
   const month = filteredTrades.filter(t=>t._dateStr.startsWith(monthStr));
 
   const todaySt  = stats(today);
@@ -588,40 +592,40 @@ function renderDashboard() {
   const fillRatex = totalOrdersx ? todayFOx.length/totalOrdersx*100 : 0;
 
   document.getElementById('todayKpis').innerHTML = todaySt ? `
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Net Profit</div>
-      <div class="kpi-val kpi-green" style="font-size:20px">${fmt$(todaySt.net)}</div>
-      <div class="win-bar-wrap"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
-      <div class="kpi-sub">${fmtPct(todaySt.wr)} win rate</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Net Profit</div>
+      <div class="kpi-val kpi-green" style="font-size:18px;line-height:1.1">${fmt$(todaySt.net)}</div>
+      <div class="win-bar-wrap" style="margin-top:4px;height:3px"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
+      <div class="kpi-sub" style="margin-top:3px">${fmtPct(todaySt.wr)} win rate</div>
     </div>
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Trades</div>
-      <div class="kpi-val" style="font-size:20px">${todaySt.t.toLocaleString()}</div>
-      <div class="win-bar-wrap"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
-      <div class="kpi-sub">${todaySt.w}W / ${todaySt.l}L / ${todaySt.be}BE</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Trades</div>
+      <div class="kpi-val" style="font-size:18px;line-height:1.1">${todaySt.t.toLocaleString()}</div>
+      <div class="win-bar-wrap" style="margin-top:4px;height:3px"><div class="win-bar" style="width:${Math.min(todaySt.wr,100)}%"></div></div>
+      <div class="kpi-sub" style="margin-top:3px">${todaySt.w}W / ${todaySt.l}L / ${todaySt.be}BE</div>
     </div>
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Premium</div>
-      <div class="kpi-val" style="font-size:20px">${fmt$(todaySt.prem)}</div>
-      <div class="kpi-sub" style="margin-top:6px">Comm: ${fmt$(todaySt.comm)}</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Premium</div>
+      <div class="kpi-val" style="font-size:18px;line-height:1.1">${fmt$(todaySt.prem)}</div>
+      <div class="kpi-sub" style="margin-top:4px">Comm: ${fmt$(todaySt.comm)}</div>
     </div>
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Avg Net / Trade</div>
-      <div class="kpi-val" style="font-size:20px">${fmt$(todaySt.avgNet)}</div>
-      <div class="kpi-sub" style="margin-top:6px">Avg time: ${Math.round(todaySt.avgTime)}s</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Avg Net / Trade</div>
+      <div class="kpi-val" style="font-size:18px;line-height:1.1">${fmt$(todaySt.avgNet)}</div>
+      <div class="kpi-sub" style="margin-top:4px">Avg time: ${Math.round(todaySt.avgTime)}s</div>
     </div>
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Filled Orders</div>
-      <div class="kpi-val" style="font-size:20px">${todayFOx.length.toLocaleString()}</div>
-      <div class="kpi-sub" style="margin-top:6px">Canceled: ${todayCOx.length.toLocaleString()}</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Filled Orders</div>
+      <div class="kpi-val" style="font-size:18px;line-height:1.1">${todayFOx.length.toLocaleString()}</div>
+      <div class="kpi-sub" style="margin-top:4px">Canceled: ${todayCOx.length.toLocaleString()}</div>
     </div>
-    <div class="card" style="padding:10px">
-      <div class="kpi-label">Fill Rate</div>
-      <div class="kpi-val" style="font-size:20px;color:var(--amber)">${fillRatex.toFixed(1)}%</div>
-      <div class="win-bar-wrap" style="margin-top:6px"><div class="win-bar" style="width:${fillRatex}%;background:var(--amber)"></div></div>
-      <div class="kpi-sub">Total: ${totalOrdersx.toLocaleString()}</div>
+    <div class="card" style="padding:7px 10px">
+      <div class="kpi-label" style="margin-bottom:3px">Fill Rate</div>
+      <div class="kpi-val" style="font-size:18px;line-height:1.1;color:var(--amber)">${fillRatex.toFixed(1)}%</div>
+      <div class="win-bar-wrap" style="margin-top:4px;height:3px"><div class="win-bar" style="width:${fillRatex}%;background:var(--amber)"></div></div>
+      <div class="kpi-sub" style="margin-top:3px">Total: ${totalOrdersx.toLocaleString()}</div>
     </div>
-  ` : '<div class="card" style="grid-column:1/-1;color:var(--muted);text-align:center;padding:20px">No trades for selected date/account</div>';
+  ` : '<div class="card" style="grid-column:1/-1;color:var(--muted);text-align:center;padding:10px">No trades for selected date/account</div>';
 
   // Week daily bars
   const weekDates = [...new Set(week.map(t=>t._dateStr))].sort();
