@@ -396,7 +396,12 @@ async function processFiles() {
     const {c, ci} = cands[0];
     usedClose.add(ci);
 
-    const sell = Math.abs(o.Price), buy = Math.abs(c.Price);
+    const openPrice = Math.abs(o.Price), closePrice = Math.abs(c.Price);
+    // For SELL TO OPEN (short): profit = open - close
+    // For BUY TO OPEN (long):  profit = close - open
+    const isLong = o.Side === 'BUY';
+    const sell = isLong ? closePrice : openPrice;
+    const buy  = isLong ? openPrice  : closePrice;
     const net = (sell - buy);
     const premium = net * 100;
     const secs = (c['Exec Time'] - o['Exec Time']) / 1000;
