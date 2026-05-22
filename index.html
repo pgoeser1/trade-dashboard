@@ -505,10 +505,10 @@ function renderDashboard() {
 
   // Header
   const df = document.getElementById('dateFrom').value, dt = document.getElementById('dateTo').value;
-  (document.getElementById('headerSub') || {}).textContent = `Data: ${df} → ${dt}  ·  ${activeAcct === 'All' ? 'All Accounts' : activeAcct}`;
+  document.getElementById('headerSub').textContent = `Data: ${df} → ${dt}  ·  ${activeAcct === 'All' ? 'All Accounts' : activeAcct}`;
   const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : '';
-  (document.getElementById('todayLabel') || {}).textContent = `TODAY — ${fmtDate(latestDate).toUpperCase()}`;
-  (document.getElementById('todayNet') || {}).textContent = todaySt ? fmt$(todaySt.net) : '—';
+  document.getElementById('todayLabel').textContent = `TODAY — ${fmtDate(latestDate).toUpperCase()}`;
+  document.getElementById('todayNet').textContent = todaySt ? fmt$(todaySt.net) : '—';
 
   // Today KPIs
   // Build all 6 top boxes together
@@ -517,7 +517,7 @@ function renderDashboard() {
   const totalOrdersx = todayFOx.length + todayCOx.length;
   const fillRatex = totalOrdersx ? todayFOx.length/totalOrdersx*100 : 0;
 
-  (document.getElementById('todayKpis') || {}).innerHTML = todaySt ? `
+  document.getElementById('todayKpis').innerHTML = todaySt ? `
     <div class="card" style="padding:7px 10px">
       <div class="kpi-label" style="margin-bottom:3px">Net Profit</div>
       <div class="kpi-val kpi-green" style="font-size:18px;line-height:1.1">${fmt$(todaySt.net)}</div>
@@ -556,8 +556,8 @@ function renderDashboard() {
   // Week daily bars
   const weekDates = [...new Set(week.map(t=>t._dateStr))].sort();
   const maxNet = Math.max(...weekDates.map(d=>Math.abs(stats(week.filter(t=>t._dateStr===d))?.net||0)));
-  (document.getElementById('weekBarsTitle') || {}).textContent = `WEEK ${weekNum} — DAILY`;
-  (document.getElementById('weekBars') || {}).innerHTML = weekDates.map(d => {
+  document.getElementById('weekBarsTitle').textContent = `WEEK ${weekNum} — DAILY`;
+  document.getElementById('weekBars').innerHTML = weekDates.map(d => {
     const s = stats(week.filter(t=>t._dateStr===d));
     const pct = maxNet ? Math.round((s.net/maxNet)*100) : 0;
     const label = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'2-digit',day:'2-digit'});
@@ -569,7 +569,7 @@ function renderDashboard() {
   }).join('') || '<div style="color:var(--muted);font-size:11px">No data</div>';
 
   if (weekSt) {
-    (document.getElementById('weekTotal') || {}).innerHTML = `
+    document.getElementById('weekTotal').innerHTML = `
       <div style="font-size:10px;color:var(--muted)">Week total · ${weekSt.t.toLocaleString()} trades · ${fmtPct(weekSt.wr)} WR</div>
       <div style="font-family:Syne,sans-serif;font-weight:700;color:var(--green)">${fmt$(weekSt.net)}</div>`;
   }
@@ -577,7 +577,7 @@ function renderDashboard() {
   // Order activity now rendered in top KPI row
 
   // Account breakdown
-  (document.getElementById('acctBreakdownTitle') || {}).textContent = `BY ACCOUNT — ${fmtDate(latestDate).toUpperCase()}`;
+  document.getElementById('acctBreakdownTitle').textContent = `BY ACCOUNT — ${fmtDate(latestDate).toUpperCase()}`;
   const acctRows = ACCOUNTS.map(a => {
     const s = stats(today.filter(t=>t.Account===a));
     if (!s) return '';
@@ -586,7 +586,7 @@ function renderDashboard() {
       <div class="acct-stats"><span>${s.t} trades</span><span>${fmtPct(s.wr)} WR</span><span>${s.w}W / ${s.l}L / ${s.be}BE</span><span>avg ${Math.round(s.avgTime)}s</span></div></div>
       <div class="acct-net">${fmt$(s.net)}</div></div>`;
   }).join('');
-  (document.getElementById('acctBreakdown') || {}).innerHTML = acctRows || '<div style="color:var(--muted);font-size:11px;padding:8px 0">No account data for today</div>';
+  document.getElementById('acctBreakdown').innerHTML = acctRows || '<div style="color:var(--muted);font-size:11px;padding:8px 0">No account data for today</div>';
 
   // Symbol performance
   const symMap = {};
@@ -613,10 +613,10 @@ function renderDashboard() {
       <div style="color:var(--muted);font-size:10px;text-align:right">${s.t}</div>
       <div class="sym-bar-wrap"><div class="sym-bar" style="width:${Math.round(s.net/maxSymNet*100)}%"></div></div>
     </div>`).join('')}`;
-  (document.getElementById('symPerf') || {}).innerHTML = `<div>${makeSymRows(syms.slice(0,half))}</div><div>${makeSymRows(syms.slice(half))}</div>`;
+  document.getElementById('symPerf').innerHTML = `<div>${makeSymRows(syms.slice(0,half))}</div><div>${makeSymRows(syms.slice(half))}</div>`;
 
   // Period summary
-  (document.getElementById('periodSummary') || {}).innerHTML = [
+  document.getElementById('periodSummary').innerHTML = [
     {label:`WEEK ${weekNum}`, s:weekSt},
     {label:monthStr ? new Date(monthStr+'-15').toLocaleString('en-US',{month:'long',year:'numeric'}).toUpperCase() : 'THIS MONTH', s:monthSt},
     {label:'ALL TIME (FILTERED)', s:alltimeSt}
@@ -634,7 +634,7 @@ function renderDashboard() {
     if (!monthGroups[m]) monthGroups[m]=[];
     monthGroups[m].push(t);
   });
-  (document.getElementById('monthlyGrid') || {}).innerHTML = Object.keys(monthGroups).sort().map(m=>{
+  document.getElementById('monthlyGrid').innerHTML = Object.keys(monthGroups).sort().map(m=>{
     const s = stats(monthGroups[m]);
     const label = new Date(m+'-15').toLocaleString('en-US',{month:'short',year:'numeric'}).toUpperCase();
     return `<div class="month-card">
