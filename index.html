@@ -419,12 +419,15 @@ async function processFiles() {
 
   // Debug: log unmatched opens
   const unmatchedOpens = opens.filter((o, oi) => {
-    return !trades.some(t => 
-      t.Account === o.Account && 
-      t.Symbol === o.Symbol &&
-      Math.abs(t.Enter - Math.abs(o.Price)) < 0.001 &&
-      t._dateStr === (o.Date ? o.Date.toISOString().slice(0,10) : '')
-    );
+    try {
+      const oDateStr = (o.Date && o.Date instanceof Date && !isNaN(o.Date)) ? o.Date.toISOString().slice(0,10) : '';
+      return !trades.some(t => 
+        t.Account === o.Account && 
+        t.Symbol === o.Symbol &&
+        Math.abs(t.Enter - Math.abs(o.Price)) < 0.001 &&
+        t._dateStr === oDateStr
+      );
+    } catch(e) { return false; }
   });
   if (unmatchedOpens.length > 0) {
     console.log('=== UNMATCHED OPENS ===', unmatchedOpens.length);
