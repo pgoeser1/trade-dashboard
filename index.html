@@ -463,7 +463,7 @@ async function processFiles() {
       unmatchedOpens2.push({
         acct: o.Account, sym: o.Symbol, strike: o.Strike,
         openExp: o.Exp, openExpType: typeof o.Exp,
-        price: o.Price, time: o['Exec Time'] ? o['Exec Time'].toISOString() : 'null',
+        price: o.Price, time: (o['Exec Time'] && o['Exec Time'] instanceof Date && !isNaN(o['Exec Time'])) ? o['Exec Time'].toISOString() : 'null',
         candidateCloses: candCloses.length,
         firstCloseExp: candCloses[0] ? candCloses[0].Exp : 'none',
         firstCloseExpType: candCloses[0] ? typeof candCloses[0].Exp : 'none',
